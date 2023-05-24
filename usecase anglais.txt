@@ -1,46 +1,70 @@
 Sub SupprimerDoublons()
-    Dim ws As Worksheet
-    Dim lastRow As Long
-    Dim rng As Range
-    Dim cell As Range
+    Dim ws As Worksheet, newWs As Worksheet
+    Dim lastRow As Long, i As Long, newRow As Long
     Dim dict As Object
+    Dim key As String
+    Dim rng As Range, cell As Range
     
     ' Définir la feuille de travail
-    Set ws = ThisWorkbook.Sheets("Nom de la feuille") ' Remplacez "Nom de la feuille" par le nom de votre feuille
+    Set ws = ThisWorkbook.Sheets("NomDeVotreFeuille")
     
-    ' Obtenir la dernière ligne avec des données
+    ' Créer une nouvelle feuille pour les lignes agrégées
+    Set newWs = ThisWorkbook.Sheets.Add(After:=ws)
+    newWs.Name = "FeuilleAgregée"
+    
+    ' Trouver la dernière ligne de données
     lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
-    
-    ' Définir la plage de données
-    Set rng = ws.Range("A16:M" & lastRow)
     
     ' Créer un dictionnaire pour stocker les lignes uniques
     Set dict = CreateObject("Scripting.Dictionary")
     
-    ' Parcourir les lignes de données à partir de la ligne 16
-    For Each cell In rng.Rows
-        ' Vérifier si la ligne est un doublon
-        If cell.Columns("A:C").Value <> "" And cell.Columns("D").Value <> "" Then
-            If Not dict.exists(cell.Columns("A:C").Value) Then
-                ' Ajouter la ligne unique au dictionnaire
-                dict.Add cell.Columns("A:C").Value, cell
+    ' Parcourir les lignes de données en commençant à la ligne 16
+    For i = 16 To lastRow
+        ' Vérifier si la colonne AF contient une valeur différente de vide ou de zéro
+        If Not IsEmpty(ws.Cells(i, "AF").Value) And ws.Cells(i, "AF").Value <> 0 Then
+            ' Ajouter la ligne à la feuille agrégée
+            newRow = newWs.Cells(newWs.Rows.Count, "A").End(xlUp).Row + 1
+            ws.Rows(i).Copy newWs.Rows(newRow)
+        Else
+            ' Créer une clé unique en combinant les valeurs des colonnes G, O et T
+            key = ws.Cells(i, "G").Value & "|" & ws.Cells(i, "O").Value & "|" & ws.Cells(i, "T").Value
+            
+            ' Vérifier si la clé existe déjà dans le dictionnaire
+            If Not dict.exists(key) Then
+                ' Ajouter la ligne au dictionnaire
+                dict.Add key, i
             Else
-                ' Mettre à jour les colonnes E, F et G pour les lignes doublons (somme)
-                dict(cell.Columns("A:C").Value).Columns("E:G").Value = dict(cell.Columns("A:C").Value).Columns("E:G").Value + cell.Columns("E:G").Value
-                ' Garder la première occurrence des colonnes H, I et J pour les lignes doublons
-                If dict(cell.Columns("A:C").Value).Columns("H").Value = "" Then
-                    dict(cell.Columns("A:C").Value).Columns("H:J").Value = cell.Columns("H:J").Value
-                End If
+                ' Ligne en doublon, agréger les colonnes spécifiées
+                For Each cell In ws.Range("H" & i & ", AB" & i & ", AC" & i & ", AD" & i & ", AE" & i & ", AF" & i & ", AH" & i & ", AJ" & i & ", AL" & i & ", AM" & i & ", AN" & i & ", AP" & i & ", AQ" & i & ", AR" & i & ", AS" & i & ", AT" & i & ", AV" & i & ", AX" & i & ", AZ" & i & ", BB" & i & ", BC" & i)
+                    ws.Cells(dict(key), cell.Column).Value = ws.Cells(dict(key), cell.Column).Value + cell.Value
+                Next cell
             End If
         End If
-    Next cell
+    Next i
     
-    ' Effacer les données de la feuille (sauf l'en-tête)
-    ws.Range("A17:M" & lastRow).ClearContents
+    ' Copier les lignes agrégées sur la nouvelle feuille
+    newRow = 1
+    For Each key In dict.keys
+        If dict(key) <> 0 Then
+            ws.Rows(dict(key)).Copy newWs.Rows(newRow)
+            newRow = newRow + 1
+            dict(key) = 0 ' Marquer la ligne copiée
+        End If
+    Next key
     
-    ' Copier les lignes uniques vers la feuille d'origine
-    dict.Items.CopyTo ws.Range("A17")
+    ' Copier les lignes uniques sur la nouvelle feuille
+    For i = 16 To lastRow
+        If ws.Rows(i).Hidden = False And ws.Rows(i).EntireRow.Hidden = False Then
+            key = ws.Cells(i, "G").Value & "|" & ws.Cells(i, "O").Value & "|" & ws.Cells(i, "T").Value
+            
+            ' Vérifier si la clé n'existe pas dans le dictionnaire
+            If Not dict.exists(key) Then
+                newRow = newWs.Cells(newWs.Rows.Count, "A").End(xlUp).Row + 1
+                ws.Rows(i).Copy newWs.Rows(newRow)
+            End If
+        End If
+    Next i
     
-    ' Réinitialiser le dictionnaire
+    ' Réinitialiser la variable dict
     Set dict = Nothing
 End Sub
