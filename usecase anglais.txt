@@ -1,14 +1,46 @@
-Hello, My name is monsieur le directeur. I am a salesman who sells cars and I've come to see you because for a week I've had big pains in my stomach. I also have diarrhea for several days and it does not stop. I also have high fevers since my pain started
-
-I went on a business trip to South West Asia one week before the pain started. In my family nobody has ever had this kind of problem
-
-
-amibiase
-
-
-
-
--mieux l'ordre des parties, mais ça manque encore d'ammorces en fin de partie sur ce qui suit, et encore ipre entre les chapitres.
-
--il y a encore des moments où il y a des chiffres sans sources.
--tu verras dans mes commentaires mais je trouve que les liens aux références sont bizarrement fait
+Sub SupprimerDoublons()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim rng As Range
+    Dim cell As Range
+    Dim dict As Object
+    
+    ' Définir la feuille de travail
+    Set ws = ThisWorkbook.Sheets("Nom de la feuille") ' Remplacez "Nom de la feuille" par le nom de votre feuille
+    
+    ' Obtenir la dernière ligne avec des données
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    
+    ' Définir la plage de données
+    Set rng = ws.Range("A16:M" & lastRow)
+    
+    ' Créer un dictionnaire pour stocker les lignes uniques
+    Set dict = CreateObject("Scripting.Dictionary")
+    
+    ' Parcourir les lignes de données à partir de la ligne 16
+    For Each cell In rng.Rows
+        ' Vérifier si la ligne est un doublon
+        If cell.Columns("A:C").Value <> "" And cell.Columns("D").Value <> "" Then
+            If Not dict.exists(cell.Columns("A:C").Value) Then
+                ' Ajouter la ligne unique au dictionnaire
+                dict.Add cell.Columns("A:C").Value, cell
+            Else
+                ' Mettre à jour les colonnes E, F et G pour les lignes doublons (somme)
+                dict(cell.Columns("A:C").Value).Columns("E:G").Value = dict(cell.Columns("A:C").Value).Columns("E:G").Value + cell.Columns("E:G").Value
+                ' Garder la première occurrence des colonnes H, I et J pour les lignes doublons
+                If dict(cell.Columns("A:C").Value).Columns("H").Value = "" Then
+                    dict(cell.Columns("A:C").Value).Columns("H:J").Value = cell.Columns("H:J").Value
+                End If
+            End If
+        End If
+    Next cell
+    
+    ' Effacer les données de la feuille (sauf l'en-tête)
+    ws.Range("A17:M" & lastRow).ClearContents
+    
+    ' Copier les lignes uniques vers la feuille d'origine
+    dict.Items.CopyTo ws.Range("A17")
+    
+    ' Réinitialiser le dictionnaire
+    Set dict = Nothing
+End Sub
